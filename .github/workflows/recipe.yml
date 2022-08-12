@@ -1,0 +1,61 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI/CD
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "master" branch
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      
+      - name: install apps
+        run: |
+          pip install requirements.txt
+          
+      
+      - name: run test
+        run: python -m pytest app
+        env:
+          DEBUG: ${{secrets.DEBUG}}
+          SECRET_KEY: ${{secrets.SECRET_KEY}}
+        
+        
+  cd:
+    runs-on: ubuntu-latest
+    needs: [ci] 
+     
+    steps:
+      - uses: actions/checkout@v2
+        
+      - name: Docker hub login
+        run: docker login -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+        
+      - name: Build
+        run: docker build -t back .
+
+      - name: Tags
+        run: |
+          docker tag back ${{ secrets.DOCKER_USER }}/recipe-app-api1_app:${{ github.sha }}
+          docker tag back ${{ secrets.DOCKER_USER }}/recipe-app-api1_app:latest
+      - name: Push
+        run: |
+          docker push ${{ secrets.DOCKER_USER }}/recipe-app-api1_app:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USER }}/recipe-app-api1_app:latest
